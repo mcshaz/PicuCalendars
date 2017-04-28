@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26403.7
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PicuCalendars", "PicuCalendars\PicuCalendars.csproj", "{F5B708B2-975A-499B-83B6-96D97E62AC24}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCalendar", "TestCalendar\TestCalendar.csproj", "{96829765-72C4-454F-B0C7-711FD90168A5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F5B708B2-975A-499B-83B6-96D97E62AC24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5B708B2-975A-499B-83B6-96D97E62AC24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5B708B2-975A-499B-83B6-96D97E62AC24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5B708B2-975A-499B-83B6-96D97E62AC24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96829765-72C4-454F-B0C7-711FD90168A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96829765-72C4-454F-B0C7-711FD90168A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96829765-72C4-454F-B0C7-711FD90168A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96829765-72C4-454F-B0C7-711FD90168A5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
