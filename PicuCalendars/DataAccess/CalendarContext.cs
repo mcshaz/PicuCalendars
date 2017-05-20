@@ -11,82 +11,111 @@ namespace PicuCalendars.DataAccess
             Database.SetInitializer(new CreateCalendarContext());
         }
 
-        public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<ServerAppointment> Appointments { get; set; }
         public DbSet<CalendarVersion> Versions { get; set; }
-        public DbSet<Department> Departments { get; set; }
+        public DbSet<ServerRoster> Rosters { get; set; }
         public DbSet<Shift> Shifts { get; set; }
-        public DbSet<StaffMember> Staff { get; set; }
+        public DbSet<ServerStaffMember> Staff { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Appointment>().HasKey(e => e.Id)
+            modelBuilder.Entity<ServerAppointment>()
+                .HasKey(e => e.Id);
+
+            modelBuilder.Entity<ServerAppointment>()
                 .HasRequired(e => e.StaffMember)
                 .WithMany(e => e.Appointments)
-                .HasForeignKey(e=>e.StaffMemberId)
+                .HasForeignKey(e=>e.StaffInitials)
                 .WillCascadeOnDelete(false);
 
-            modelBuilder.Entity<Appointment>()
-                .HasRequired(e => e.Department)
+            modelBuilder.Entity<ServerAppointment>()
+                .HasRequired(e => e.Roster)
                 .WithMany(e => e.Appointments)
-                .HasForeignKey(e=>e.DepartmentId)
+                .HasForeignKey(e=>e.RosterId)
                 .WillCascadeOnDelete(false);
 
-            modelBuilder.Entity<Appointment>()
+            modelBuilder.Entity<ServerAppointment>()
                 .HasRequired(e => e.VersionCreated)
                 .WithMany(e=>e.CreatedAppointments)
                 .HasForeignKey(e=>e.VersionCreatedId)
                 .WillCascadeOnDelete(false);
 
-            modelBuilder.Entity<Appointment>()
+            modelBuilder.Entity<ServerAppointment>()
                 .HasOptional(e => e.VersionCancelled)
                 .WithMany(e=>e.CancelledAppointments)
                 .HasForeignKey(e=>e.VersionCancelledId)
                 .WillCascadeOnDelete(false);
 
-            //.Property(e => e.Abbreviation)
-            //.HasColumnAnnotation("UniqueAbbreviation", new IndexAnnotation(new IndexAttribute { IsUnique = true }));
+            modelBuilder.Entity<ServerAppointment>()
+                .Property(e => e.StaffInitials)
+                .HasMaxLength(2);
+
             modelBuilder.Entity<CalendarVersion>()
                 .HasKey(e => e.Number);
 
-            modelBuilder.Entity<Department>().HasKey(e => e.Id)
-                .Property(e=>e.Name)
+            //.Property(e => e.Abbreviation)
+            //.HasColumnAnnotation("UniqueAbbreviation", new IndexAnnotation(new IndexAttribute { IsUnique = true }));
+
+            modelBuilder.Entity<ServerRoster>()
+                .HasKey(e => e.Id);
+
+            modelBuilder.Entity<ServerRoster>()
+                .Property(e=>e.DepartmentName)
                 .HasMaxLength(64);
 
-            modelBuilder.Entity<Shift>().HasKey(e => new { e.DepartmentId, e.Code });
+            modelBuilder.Entity<ServerRoster>()
+                .Property(e => e.RosterName)
+                .HasMaxLength(64);
 
-            modelBuilder.Entity<Shift>().Property(e => e.Code)
+            modelBuilder.Entity<ServerRoster>()
+                .Property(e => e.Secret)
+                .IsFixedLength()
+                .HasMaxLength(64);
+
+            modelBuilder.Entity<Shift>()
+                .HasKey(e => new { e.RosterId, e.Code });
+
+            modelBuilder.Entity<Shift>()
+                .Property(e => e.Code)
                 .IsFixedLength()
                 .HasMaxLength(2);
 
-            modelBuilder.Entity<Shift>().Property(e => e.Description)
+            modelBuilder.Entity<Shift>()
+                .Property(e => e.Description)
                 .HasMaxLength(128);
 
             modelBuilder.Entity<Shift>()
-                .HasRequired(e => e.Department)
+                .HasRequired(e => e.Roster)
                 .WithMany()
-                .HasForeignKey(e=>e.DepartmentId)
+                .HasForeignKey(e=>e.RosterId)
                 .WillCascadeOnDelete(false);
 
-            modelBuilder.Entity<StaffMember>().HasKey(e => e.Id)
-                .HasRequired(e => e.Department)
+            modelBuilder.Entity<ServerStaffMember>()
+                .HasKey(e => e.Id); 
+
+            modelBuilder.Entity<ServerStaffMember>()
+                .HasRequired(e => e.Roster)
                 .WithMany(e => e.Staff)
-                .HasForeignKey(e=>e.DepartmentId)
+                .HasForeignKey(e=>e.RosterId)
                 .WillCascadeOnDelete(false);
+
 
             const string compositeStaffDptAbbrev = "IX_StaffDepartmentAbbrev";
-            modelBuilder.Entity<StaffMember>().Property(e => e.DepartmentId)
+            modelBuilder.Entity<ServerStaffMember>().Property(e => e.RosterId)
                 .HasColumnAnnotation(IndexAnnotation.AnnotationName, new IndexAnnotation(new IndexAttribute(compositeStaffDptAbbrev, 1) { IsUnique = true }));
 
-            modelBuilder.Entity<StaffMember>().Property(e => e.Abbreviation)
-                .HasMaxLength(2)
+            modelBuilder.Entity<ServerStaffMember>()
+                .Property(e => e.RosterCode)
+                .HasMaxLength(128)
+                .IsRequired()
                 .HasColumnAnnotation(IndexAnnotation.AnnotationName, new IndexAnnotation(new IndexAttribute(compositeStaffDptAbbrev, 2) { IsUnique = true }));
 
-            modelBuilder.Entity<StaffMember>()
+            modelBuilder.Entity<ServerStaffMember>()
                 .HasOptional(e => e.LastViewedVersion)
                 .WithMany()
                 .HasForeignKey(e=>e.LastViewedVersionId);
 
-            modelBuilder.Entity<StaffMember>()
+            modelBuilder.Entity<ServerStaffMember>()
                 .Property(e => e.FullName)
                 .HasMaxLength(256);
         }

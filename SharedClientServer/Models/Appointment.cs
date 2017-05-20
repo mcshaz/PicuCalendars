@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
@@ -8,8 +10,9 @@ using System.Threading.Tasks;
 namespace PicuCalendars.Models
 {
     [Serializable]
-    public class ShiftModel
+    public class Appointment
     {
+        [JsonConverter(typeof(OnlyDateConverter))]
         [DataType(DataType.Date)]
         public DateTime Date { get; set; }
 
@@ -24,7 +27,7 @@ namespace PicuCalendars.Models
     public class ShiftModelError
     {
         public enum ShiftErrorType { ShiftCodeNotFound, StaffInitialsNotFound }
-        public ShiftModel ErrorModel { get; set; }
+        public Appointment ErrorModel { get; set; }
         public ShiftErrorType ErrorType {get; set;}
     }
 
@@ -33,5 +36,13 @@ namespace PicuCalendars.Models
     {
         public DataException DatabaseException { get; set; }
         public List<ShiftModelError> ModelErrors { get; set; }
+    }
+
+    public class OnlyDateConverter : IsoDateTimeConverter
+    {
+        public OnlyDateConverter()
+        {
+            DateTimeFormat = "yyyy-MM-dd";
+        }
     }
 }

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PicuCalendars", "PicuCalend
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestCalendar", "TestCalendar\TestCalendar.csproj", "{96829765-72C4-454F-B0C7-711FD90168A5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedClientServer", "SharedClientServer\SharedClientServer.csproj", "{A8DC39F6-D7B1-47F7-A332-30FCBD6C0D2B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{96829765-72C4-454F-B0C7-711FD90168A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{96829765-72C4-454F-B0C7-711FD90168A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{96829765-72C4-454F-B0C7-711FD90168A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8DC39F6-D7B1-47F7-A332-30FCBD6C0D2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8DC39F6-D7B1-47F7-A332-30FCBD6C0D2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8DC39F6-D7B1-47F7-A332-30FCBD6C0D2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8DC39F6-D7B1-47F7-A332-30FCBD6C0D2B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

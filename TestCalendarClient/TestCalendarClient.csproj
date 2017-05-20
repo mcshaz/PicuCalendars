@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{96829765-72C4-454F-B0C7-711FD90168A5}</ProjectGuid>
+    <ProjectGuid>{C05A9C7C-BC8C-4A17-ACBD-299D40B6603D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TestCalendar</RootNamespace>
-    <AssemblyName>TestCalendar</AssemblyName>
+    <RootNamespace>TestCalendarClient</RootNamespace>
+    <AssemblyName>TestCalendarClient</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -47,27 +47,17 @@
     <Reference Include="Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\MSTest.TestFramework.1.1.17\lib\net45\Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TestConsecutiveGroup.cs" />
-    <Compile Include="Crypto.cs" />
-    <Compile Include="StaticExtensionTests.cs" />
-    <Compile Include="DateTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PicuCalendars\PicuCalendars.csproj">
-      <Project>{f5b708b2-975a-499b-83b6-96d97e62ac24}</Project>
-      <Name>PicuCalendars</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\SharedClientServer\SharedClientServer.csproj">
-      <Project>{a8dc39f6-d7b1-47f7-a332-30fcbd6c0d2b}</Project>
-      <Name>SharedClientServer</Name>
+    <ProjectReference Include="..\ExcelRosterReader\ExcelRosterReader.csproj">
+      <Project>{9aed69f6-73b0-46e1-88c4-195c90465b71}</Project>
+      <Name>ExcelRosterReader</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

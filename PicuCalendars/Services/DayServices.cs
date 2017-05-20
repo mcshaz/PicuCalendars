@@ -23,7 +23,7 @@ namespace PicuCalendars.Services
             _context = context;
         }
 
-        public ShiftModelErrorCollection UpsertAppointments(IEnumerable<ShiftModel> dayModels, Guid departmentId)
+        public ShiftModelErrorCollection UpsertAppointments(IEnumerable<Appointment> dayModels, Guid rosterId)
         {
             var returnVar = new ShiftModelErrorCollection
             {
@@ -43,8 +43,8 @@ namespace PicuCalendars.Services
                 return _version;
             });
 
-            var staff = _context.Staff.Where(s => s.DepartmentId == departmentId).ToDictionary(s=>s.Abbreviation);
-            var shifts = _context.Shifts.Where(s => s.DepartmentId == departmentId).ToDictionary(s=>s.Code);
+            var staff = _context.Staff.Where(s => s.RosterId == rosterId).ToDictionary(s=>s.RosterCode);
+            var shifts = _context.Shifts.Where(s => s.RosterId == rosterId).ToDictionary(s=>s.Code);
 
             //to do concurrency/lock rows
             //https://msdn.microsoft.com/en-us/library/dn456843(v=vs.113).aspx
@@ -56,17 +56,17 @@ namespace PicuCalendars.Services
                 {
                     var startDate = dms.Date + shift.ShiftStart;
                     var finishDate = startDate + shift.Duration;
-                    var apptList = new List<Appointment>(dms.StaffInitials.Length);
+                    var apptList = new List<ServerAppointment>(dms.StaffInitials.Length);
                     foreach (var si in dms.StaffInitials)
                     {
-                        if (staff.TryGetValue(si, out StaffMember sm))
+                        if (staff.TryGetValue(si, out ServerStaffMember sm))
                         {
-                            apptList.Add(new Appointment
+                            apptList.Add(new ServerAppointment
                             {
                                 Start = startDate,
                                 Finish = finishDate,
                                 StaffMember = sm,
-                                DepartmentId = departmentId,
+                                RosterId = rosterId,
                                 Description = shift.Description,
                                 IsLeaveShift = shift.LeaveShift
                             });
@@ -88,13 +88,13 @@ namespace PicuCalendars.Services
                         ErrorModel = dms,
                         ErrorType = ShiftModelError.ShiftErrorType.ShiftCodeNotFound
                     });
-                    return Enumerable.Empty<Appointment>();
+                    return Enumerable.Empty<ServerAppointment>();
                 }
-            }).ToDictionary(a=> new { a.Start, a.StaffMember.Abbreviation, a.Description });
+            }).ToDictionary(a=> new { a.Start, a.StaffMember.RosterCode, a.Description });
 
             var existingAppointments = _context.Appointments
                 .Where(ContainsDates(newAppointments.Values.Select(a=>a.Start)))
-                .Where(a => a.VersionCancelledId == null && departmentId == a.DepartmentId)
+                .Where(a => a.VersionCancelledId == null && rosterId == a.RosterId)
                 .ToList();
 
             //logic:
@@ -105,7 +105,7 @@ namespace PicuCalendars.Services
             foreach (var existAppt in existingAppointments)
             {
                 
-                if (!newAppointments.Remove(new { existAppt.Start, existAppt.StaffMember.Abbreviation, existAppt.Description }))
+                if (!newAppointments.Remove(new { existAppt.Start, existAppt.StaffMember.RosterCode, existAppt.Description }))
                 {
                     if (lastViewedVersionId >= existAppt.VersionCreatedId)
                     {
@@ -135,9 +135,9 @@ namespace PicuCalendars.Services
 
         private readonly CalendarContext _context;
 
-        public static Expression<Func<Appointment, bool>> ContainsDates(IEnumerable<DateTime> dates)
+        public static Expression<Func<ServerAppointment, bool>> ContainsDates(IEnumerable<DateTime> dates)
         {
-            var predicate = PredicateBuilder.New<Appointment>();
+            var predicate = PredicateBuilder.New<ServerAppointment>();
             foreach (var d in DateRange.FromDates(dates))
             {
                 predicate = predicate.Or(p => d.Start <= p.Start && p.Start <= d.Finish);

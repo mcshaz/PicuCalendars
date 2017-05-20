@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace PicuCalendars.DataAccess
 {
     public class Shift
     {
-        public Guid DepartmentId { get; set; }
+        public Guid RosterId { get; set; }
         public string Code { get; set; }
 
         public string Description { get; set; }
@@ -23,6 +20,6 @@ namespace PicuCalendars.DataAccess
             set { DurationMins = (int)value.TotalMinutes; }
         }
 
-        public virtual Department Department { get; set; }
+        public virtual Roster Roster { get; set; }
     }
 }

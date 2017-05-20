@@ -22,7 +22,7 @@ namespace PicuCalendars.Services
             _context = context;
         }
 
-        public string GetCalendar(Guid staffId, int daysPriorToCommence = 14)
+        public string GetCalendar(Guid rosterId, string initials, int daysPriorToCommence = 14)
         {
             var calendar = new Calendar
             {
@@ -31,7 +31,7 @@ namespace PicuCalendars.Services
             };
 
             var staffMember = _context.Staff.Include("Department")
-                .Single(s => s.Id == staffId);
+                .Single(s => s.RosterId == rosterId && s.RosterCode == initials);
             staffMember.LastViewedVersionId = _context.Versions.Max(v=>v.Number);
             foreach (var e in GetCalls(staffMember, daysPriorToCommence))
             {
@@ -42,15 +42,15 @@ namespace PicuCalendars.Services
             return serializer.SerializeToString(calendar);
         }
 
-        public IEnumerable<Event> GetCalls(StaffMember staffMember, int daysPriorToCommence = 14)
+        public IEnumerable<Event> GetCalls(ServerStaffMember staffMember, int daysPriorToCommence = 14)
         {
             var datePrior = DateTime.Today - TimeSpan.FromDays(daysPriorToCommence);
-            var dpt = staffMember.Department;
+            var dpt = staffMember.Roster;
 
             var userAppointments = (from a in _context.Appointments
                                         .Include("VersionCreated").Include("VersionCancelled")
                                         .AsNoTracking() 
-                                    where a.StaffMemberId == staffMember.Id && a.Start > datePrior
+                                    where a.RosterId==staffMember.RosterId && a.StaffInitials == staffMember.RosterCode && a.Start > datePrior
                                     orderby a.Start
                                     select a).ToLookup(a => new { Cancelled = a.VersionCancelledId != null, a.IsLeaveShift, a.Description });
 
@@ -76,7 +76,7 @@ namespace PicuCalendars.Services
             }
 
             shifts.Sort(SortEvents);
-            var datePred = PredicateBuilder.New<Appointment>();
+            var datePred = PredicateBuilder.New<ServerAppointment>();
             foreach (var s in shifts.ConsecutiveGroup((prior, curr)=>curr.DtStart.AsSystemLocal <= prior.DtEnd.AsSystemLocal))
             {
                 var start = s[0].DtStart.AsSystemLocal;
@@ -88,12 +88,12 @@ namespace PicuCalendars.Services
                                 .Include("VersionCreated")
                                 .Include("StaffMember")
                                 .AsNoTracking()
-                                .Where(a => a.VersionCancelledId == null && !a.IsLeaveShift && a.StaffMemberId != staffMember.Id)
+                                .Where(a => a.RosterId == staffMember.RosterId && a.VersionCancelledId == null && !a.IsLeaveShift && a.StaffInitials != staffMember.RosterCode)
                                 .Where(datePred)
                                 .OrderBy(a=>a.Start)
                                 .ToList());
 
-            var debugColleagues = new List<Appointment>();
+            var debugColleagues = new List<ServerAppointment>();
             var badDate = new DateTime(2017, 5, 8, 8, 0, 0);
             foreach (var s in shifts.ConsecutiveGroup((prior, curr) => curr.DtStart.AsSystemLocal <= prior.DtEnd.AsSystemLocal))
             {
@@ -128,7 +128,7 @@ namespace PicuCalendars.Services
             Debug.Assert(colleagueIndex >= colleagues.Count, "All colleagues not assigned");
             return shifts.Concat(leave).Concat(cancelled).ToList();
         }
-        private static IEnumerable<Event> MapEvent(IEnumerable<Appointment> events, Action<Event, IList<Appointment>> pred)
+        private static IEnumerable<Event> MapEvent(IEnumerable<ServerAppointment> events, Action<Event, IList<ServerAppointment>> pred)
         {
             return events.ConsecutiveGroup((prior, current) => current.Start <= prior.Finish)
                 .Select(ge =>
@@ -150,12 +150,12 @@ namespace PicuCalendars.Services
                 });
         }
 
-        internal static string GetSummary(Appointment evt)
+        internal static string GetSummary(ServerAppointment evt)
         {
-            return evt.Department.Name + ' ' + evt.Description;
+            return evt.Roster.DepartmentName + ' ' + evt.Description;
         }
 
-        private static IEnumerable<Event> MapLeave(IEnumerable<Appointment> events)
+        private static IEnumerable<Event> MapLeave(IEnumerable<ServerAppointment> events)
         {
             return MapEvent(events, (evt, appts) => {
                 evt.Status = EventStatus.Confirmed;
@@ -163,7 +163,7 @@ namespace PicuCalendars.Services
             });
         }
 
-        private static IEnumerable<Event> MapCancelled(IEnumerable<Appointment> events)
+        private static IEnumerable<Event> MapCancelled(IEnumerable<ServerAppointment> events)
         {
             return MapEvent(events, (evt, appts) => {
                 var minCancelDate = appts.Min(e => e.VersionCancelled.Created);
@@ -177,7 +177,7 @@ namespace PicuCalendars.Services
             });
         }
 
-        private static IEnumerable<Event> MapCalls(IEnumerable<Appointment> events)
+        private static IEnumerable<Event> MapCalls(IEnumerable<ServerAppointment> events)
         {
             return MapEvent(events, (evt, appts) => {
                 evt.Status = EventStatus.Confirmed;
@@ -198,7 +198,7 @@ namespace PicuCalendars.Services
             return x.DtStart.AsSystemLocal.CompareTo(y.DtEnd.AsSystemLocal);
         }
 
-        private static void UpdateEventWithColleaguesData(Event evt, IEnumerable<Appointment> colleagues)
+        private static void UpdateEventWithColleaguesData(Event evt, IEnumerable<ServerAppointment> colleagues)
         {
             if (!colleagues.Any()) { return; }
             List<ColleagueModel> sameCallPrincipal = new List<ColleagueModel>();
@@ -240,8 +240,8 @@ namespace PicuCalendars.Services
                         desc.Append(" with ");
                         appendTab = true;
                     }
-                    desc.Append(s.Person.FullName);
-                    summ.Append(s.Person.Abbreviation);
+                    desc.Append(s.Person.FullName ?? s.Person.RosterCode);
+                    summ.Append(s.Person.RosterCode);
                     if (s.Start > evt.DtStart.AsSystemLocal)
                     {
                         string st = $" from {s.Start:g}";
@@ -264,7 +264,7 @@ namespace PicuCalendars.Services
 
             foreach (var o in otherCalls)
             {
-                desc.Append(o.Description + ' ' + o.Person.FullName);
+                desc.Append(o.Description + ' ' + (o.Person.FullName ?? o.Person.RosterCode));
                 if (o.Start > evt.DtStart.AsSystemLocal)
                 {
                     desc.Append($" from {o.Start:g}");
@@ -297,7 +297,7 @@ namespace PicuCalendars.Services
                 return Start.ToString("g") + " - " + FinishString();
             }
 
-            protected static void InstantiateColleagueModel(IList<Appointment> appts, ColleagueModel model)
+            protected static void InstantiateColleagueModel(IList<ServerAppointment> appts, ColleagueModel model)
             {
                 model.Person = appts[0].StaffMember;
                 model.Start = appts[0].Start;
@@ -306,7 +306,7 @@ namespace PicuCalendars.Services
                 model.Modified = appts.Max(e => e.VersionCreated.Created);
             }
 
-            public static ColleagueModel FromAppointments(IList<Appointment> appts)
+            public static ColleagueModel FromAppointments(IList<ServerAppointment> appts)
             {
                 var returnVar = new ColleagueModel();
                 InstantiateColleagueModel(appts, returnVar);
@@ -318,7 +318,7 @@ namespace PicuCalendars.Services
         {
             public string Description { get; set; }
 
-            public static new ColleagueOtherShiftModel FromAppointments(IList<Appointment> appts)
+            public static new ColleagueOtherShiftModel FromAppointments(IList<ServerAppointment> appts)
             {
                 var returnVar = new ColleagueOtherShiftModel
                 {

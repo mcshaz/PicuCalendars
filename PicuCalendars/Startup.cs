@@ -7,6 +7,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PicuCalendars.DataAccess;
+using System.Security.Principal;
+using PicuCalendars.Security;
+using System.Security.Claims;
 
 namespace PicuCalendars
 {
@@ -39,6 +42,21 @@ namespace PicuCalendars
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+
+            //Custom authentication middleware.
+            app.Use(async (context, next) =>
+            {
+                var cc = app.ApplicationServices.GetService<CalendarContext>();
+                var rosterAccess = await MyValidationToken.RosterAccess(context, cc);
+                if (rosterAccess != null)
+                {
+                    //use a GenericPrincipal if we want to load roles
+                    context.User = new ClaimsPrincipal(new ClaimsIdentity(new GenericIdentity("DefaultUser","Cookies"), new[] { new Claim("RosterAccess", rosterAccess.Value.ToString()) }));
+                }
+
+                //Replace the parameter with the username from the request.
+                await next();
+            });
 
             app.UseMvc();
         }

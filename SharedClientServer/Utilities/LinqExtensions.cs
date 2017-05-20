@@ -76,5 +76,14 @@ namespace PicuCalendars.Utilities
                 return true;
             }
         }
+
+        [DebuggerStepThrough()]
+        public static T[] ConcatArray<T>(this T[] array1, T[] array2)
+        {
+            var returnVar = new T[array1.Length + array2.Length];
+            Array.Copy(array1, 0, returnVar, 0, array1.Length);
+            Array.Copy(array2, 0, returnVar, array1.Length, array2.Length);
+            return returnVar;
+        }
     }
 }

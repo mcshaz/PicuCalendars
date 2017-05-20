@@ -10,7 +10,7 @@ namespace PicuCalendars.DataAccess
         public int Number { get; set; }
         public DateTime Created { get; set; }
 
-        public virtual ICollection<Appointment> CreatedAppointments { get; set; }
-        public virtual ICollection<Appointment> CancelledAppointments { get; set; }
+        public virtual ICollection<ServerAppointment> CreatedAppointments { get; set; }
+        public virtual ICollection<ServerAppointment> CancelledAppointments { get; set; }
     }
 }
