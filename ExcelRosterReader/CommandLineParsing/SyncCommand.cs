@@ -79,7 +79,7 @@ namespace ExcelRosterReader
                                 roster = GetRows.FromInitialDict(rosterXl.WorkbookPart.Workbook, map, r.DateColumn);
                             }
                         }
-                        SendEntities.PostRosterUpsert(r.RosterId, r.Base64Secret, roster);
+                        SendEntities.PostRosterUpsert(r.RosterId, r.Base64Secret, roster, Out, Error);
                     }
                 }
             }

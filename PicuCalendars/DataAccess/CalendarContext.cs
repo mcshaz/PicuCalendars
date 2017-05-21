@@ -25,7 +25,7 @@ namespace PicuCalendars.DataAccess
             modelBuilder.Entity<ServerAppointment>()
                 .HasRequired(e => e.StaffMember)
                 .WithMany(e => e.Appointments)
-                .HasForeignKey(e=>e.StaffInitials)
+                .HasForeignKey(e=>new { e.RosterId, e.StaffInitials })
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<ServerAppointment>()
@@ -48,7 +48,7 @@ namespace PicuCalendars.DataAccess
 
             modelBuilder.Entity<ServerAppointment>()
                 .Property(e => e.StaffInitials)
-                .HasMaxLength(2);
+                .HasMaxLength(64);
 
             modelBuilder.Entity<CalendarVersion>()
                 .HasKey(e => e.Number);
@@ -91,7 +91,7 @@ namespace PicuCalendars.DataAccess
                 .WillCascadeOnDelete(false);
 
             modelBuilder.Entity<ServerStaffMember>()
-                .HasKey(e => e.Id); 
+                .HasKey(e => new { e.RosterId, e.RosterCode }); 
 
             modelBuilder.Entity<ServerStaffMember>()
                 .HasRequired(e => e.Roster)
@@ -99,16 +99,17 @@ namespace PicuCalendars.DataAccess
                 .HasForeignKey(e=>e.RosterId)
                 .WillCascadeOnDelete(false);
 
-
+            /*
             const string compositeStaffDptAbbrev = "IX_StaffDepartmentAbbrev";
             modelBuilder.Entity<ServerStaffMember>().Property(e => e.RosterId)
                 .HasColumnAnnotation(IndexAnnotation.AnnotationName, new IndexAnnotation(new IndexAttribute(compositeStaffDptAbbrev, 1) { IsUnique = true }));
+            */
 
             modelBuilder.Entity<ServerStaffMember>()
                 .Property(e => e.RosterCode)
-                .HasMaxLength(128)
-                .IsRequired()
-                .HasColumnAnnotation(IndexAnnotation.AnnotationName, new IndexAnnotation(new IndexAttribute(compositeStaffDptAbbrev, 2) { IsUnique = true }));
+                .HasMaxLength(32)
+                .IsRequired();
+                //.HasColumnAnnotation(IndexAnnotation.AnnotationName, new IndexAnnotation(new IndexAttribute(compositeStaffDptAbbrev, 2) { IsUnique = true }));
 
             modelBuilder.Entity<ServerStaffMember>()
                 .HasOptional(e => e.LastViewedVersion)

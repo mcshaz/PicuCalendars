@@ -10,7 +10,7 @@ using PicuCalendars.DataAccess;
 
 namespace PicuCalendars.Controllers
 {
-    [Authorize] //note with current implementation, can never authorize
+    //[Authorize] //note with current implementation, can never authorize
     [Route("api/[controller]")]
     public class RosterController : Controller
     {
@@ -34,10 +34,10 @@ namespace PicuCalendars.Controllers
         }
 
         // POST api/values
-        [HttpPost]
-        public IActionResult Post([FromBody]Roster item)
+        [HttpPost("{id}")]
+        public IActionResult Post(Guid id, [FromBody]Roster item)
         {
-            if (item == null)
+            if (item == null || item.Id != id)
             {
                 return BadRequest();
             }

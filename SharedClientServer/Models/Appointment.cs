@@ -19,7 +19,7 @@ namespace PicuCalendars.Models
         [StringLength(2, MinimumLength = 2)]
         public string ShiftCode { get; set; }
 
-        [EachStringLength(2,MinimumLength = 1)]
+        [EachStringLength(64,MinimumLength = 1)]
         public string[] StaffInitials { get; set; }
     }
 

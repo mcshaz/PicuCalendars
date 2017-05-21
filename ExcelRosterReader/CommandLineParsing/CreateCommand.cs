@@ -132,12 +132,10 @@ namespace ExcelRosterReader.CommandLineParsing
                 RosterName = Description,
                 Secret = secret,
                 DepartmentName = departmentName
-            });
+            }, Out, Error);
 
-            if (!res.IsSuccessStatusCode)
+            if (res == null || !res.IsSuccessStatusCode)
             {
-                Error.WriteLine(res.ReasonPhrase);
-                //Error.WriteLine(res.Content)
                 return 1;
             }
             Storage.Add(newInfo);
@@ -150,12 +148,13 @@ namespace ExcelRosterReader.CommandLineParsing
             if (!(ext.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
                 || ext.Equals(".xlsm", StringComparison.OrdinalIgnoreCase)))
             {
-                Error.WriteLine($"{description} is not a valid extension (must be .xlsx or .xlsm})");
+                Error.WriteLine($"{description} is not a valid extension (must be .xlsx or .xlsm)");
                 return false;
             }
             return true;
         }
-        private bool ExcelFileOk(string path, string description)
+
+        public bool ExcelFileOk(string path, string description)
         {
             if (!ExtensionOk(path, description))
             {

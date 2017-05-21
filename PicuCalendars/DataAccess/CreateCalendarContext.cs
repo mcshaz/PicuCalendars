@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace PicuCalendars.DataAccess
 {
-    public class CreateCalendarContext : DropCreateDatabaseIfModelChanges<CalendarContext>
+    public class CreateCalendarContext : DropCreateDatabaseAlways<CalendarContext>
     {
         protected override void Seed(CalendarContext context)
         {
@@ -30,15 +30,15 @@ namespace PicuCalendars.DataAccess
             });
 
             context.Staff.AddRange(new[] {
-                new ServerStaffMember { Id = Guid.Parse("632036E2-C3CF-4116-B9B9-59AB075AB0DA"), FullName = "Alex Hussey",  Roster = cons, RosterCode="AH" },
-                new ServerStaffMember { Id = Guid.Parse("1B435B77-0062-411F-9B6B-1B3C154D2E6D"), FullName = "Anusha Ganeshalingham",  Roster = cons, RosterCode="AG" },
-                new ServerStaffMember { Id = Guid.Parse("BFE2AE9C-2C9A-4730-8D20-4BBC370461AB"), FullName = "Brent McSharry",  Roster = cons, RosterCode="BM" },
-                new ServerStaffMember { Id = Guid.Parse("A1F39FFD-1161-4474-8823-8BB441395A2A"), FullName = "Fiona Miles",  Roster = cons, RosterCode="M" },
-                new ServerStaffMember { Id = Guid.Parse("F4DE1C5A-AA18-4A99-B300-6183000CDC93"), FullName = "Gabrielle Nuthall",  Roster = cons, RosterCode="N" },
-                new ServerStaffMember { Id = Guid.NewGuid(), FullName = "Dave Buckley",  Roster = cons, RosterCode="BU" },
-                new ServerStaffMember { Id = Guid.NewGuid(), FullName = "John Beca",  Roster = cons, RosterCode="BE" },
-                new ServerStaffMember { Id = Guid.NewGuid(), FullName = "Brian Anderson",  Roster = cons, RosterCode="A" },
-                new ServerStaffMember { Id = Guid.NewGuid(), FullName = "Liz Segedin",  Roster = cons, RosterCode="S" }
+                new ServerStaffMember { /*Id = Guid.Parse("632036E2-C3CF-4116-B9B9-59AB075AB0DA"),*/ FullName = "Alex Hussey",  Roster = cons, RosterCode="AH" },
+                new ServerStaffMember { /*Id = Guid.Parse("1B435B77-0062-411F-9B6B-1B3C154D2E6D"),*/ FullName = "Anusha Ganeshalingham",  Roster = cons, RosterCode="AG" },
+                new ServerStaffMember { /*Id = Guid.Parse("BFE2AE9C-2C9A-4730-8D20-4BBC370461AB"),*/ FullName = "Brent McSharry",  Roster = cons, RosterCode="BM" },
+                new ServerStaffMember { /*Id = Guid.Parse("A1F39FFD-1161-4474-8823-8BB441395A2A"),*/ FullName = "Fiona Miles",  Roster = cons, RosterCode="M" },
+                new ServerStaffMember { /*Id = Guid.Parse("F4DE1C5A-AA18-4A99-B300-6183000CDC93"),*/ FullName = "Gabrielle Nuthall",  Roster = cons, RosterCode="N" },
+                new ServerStaffMember { /*Id = Guid.NewGuid(),*/ FullName = "Dave Buckley",  Roster = cons, RosterCode="BU" },
+                new ServerStaffMember { /*Id = Guid.NewGuid(),*/ FullName = "John Beca",  Roster = cons, RosterCode="BE" },
+                new ServerStaffMember { /*Id = Guid.NewGuid(),*/ FullName = "Brian Anderson",  Roster = cons, RosterCode="A" },
+                new ServerStaffMember { /*Id = Guid.NewGuid(),*/ FullName = "Liz Segedin",  Roster = cons, RosterCode="S" }
             });
 
             context.SaveChanges();

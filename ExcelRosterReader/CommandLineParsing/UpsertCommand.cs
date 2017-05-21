@@ -65,7 +65,7 @@ namespace ExcelRosterReader
                 foreach (var s in selectedTypes)
                 {
                     var data = s.FromSheets(sheets);
-                    SendEntities.PostRosterUpsert(rosterInfo.RosterId, rosterInfo.Base64Secret, data);
+                    SendEntities.PostRosterUpsert(rosterInfo.RosterId, rosterInfo.Base64Secret, data, Out, Error);
                 }
             }
 

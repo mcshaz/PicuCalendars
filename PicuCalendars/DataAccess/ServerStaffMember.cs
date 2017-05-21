@@ -20,7 +20,6 @@ namespace PicuCalendars.DataAccess
             {
                 Email = staff.Email,
                 FullName = staff.FullName,
-                Id = staff.Id,
                 RosterCode = staff.RosterCode,
                 RosterId = staff.RosterId
             };
