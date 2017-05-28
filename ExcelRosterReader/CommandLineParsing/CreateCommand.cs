@@ -67,6 +67,18 @@ namespace ExcelRosterReader.CommandLineParsing
                 Error.WriteLine($"A department name ({_departmentCmd.Template}) must be specified");
                 return 1;
             }
+            bool headerType = _rosterTypeHeaderCmd.Value() != null;
+            if (headerType && _rosterTypeColumnsCmd.Value() != null)
+            {
+                Error.WriteLine("Must specify either headers or columns option, but not both");
+                return 1;
+            }
+
+            if (Storage.Find(_arg.Value) != null)
+            {
+                Error.WriteLine("the description must be unique - " + _arg.Value + " already exists");
+                return 1;
+            }
 
             string dateCol = _dateColumnCmd.Value();
             if (string.IsNullOrEmpty(dateCol))
@@ -109,12 +121,8 @@ namespace ExcelRosterReader.CommandLineParsing
             {
                 wb.Save();
             }
+            wb.Dispose();
 
-            bool headerType = _rosterTypeHeaderCmd.Value() != null;
-            if (headerType && _rosterTypeColumnsCmd.Value() != null)
-            {
-                Error.WriteLine("Must specify either headers or columns option, but not both");
-            }
             var secret = CryptoUtilities.GenerateKey();
             var newInfo = new ExcelRosterFileInfo {
                 Description = _arg.Value,
@@ -129,7 +137,7 @@ namespace ExcelRosterReader.CommandLineParsing
             var res = SendEntities.CreateRoster(new Roster
             {
                 Id = newInfo.RosterId,
-                RosterName = Description,
+                RosterName = newInfo.Description,
                 Secret = secret,
                 DepartmentName = departmentName
             }, Out, Error);

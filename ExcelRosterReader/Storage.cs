@@ -32,12 +32,22 @@ namespace ExcelRosterReader
             }
         }
 
+        public static void KeepLast()
+        {
+            using (var db = new LiteDatabase(dbFile))
+            {
+                var col = db.GetCollection<ExcelRosterFileInfo>();
+                var last = col.FindAll().Last();
+                col.Delete(fi => fi.RosterId != last.RosterId);
+            }
+        }
+
         public static ExcelRosterFileInfo Find(string description)
         {
             using (var db = new LiteDatabase(dbFile))
             {
                 return db.GetCollection<ExcelRosterFileInfo>()
-                    .Find(er=>er.Description == description, 0,1).Single();
+                    .Find(er=>er.Description == description).SingleOrDefault();
                 // now we can carry out CRUD operations on the data
             }
         }

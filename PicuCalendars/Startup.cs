@@ -10,6 +10,8 @@ using PicuCalendars.DataAccess;
 using System.Security.Principal;
 using PicuCalendars.Security;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PicuCalendars
 {
@@ -35,6 +37,17 @@ namespace PicuCalendars
 
             //string connString = Configuration.GetConnectionString("DefaultConnection");
             services.AddScoped(_ => new CalendarContext(Configuration["ConnectionStrings:DefaultConnection"]));
+
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("CreateAtRoute",
+                    policy => policy.Requirements.Add(new AccessRoute(ValidationUtilities.RequestClaimBase.AccessLevel.CreateResource, "rosterId")));
+                options.AddPolicy("UpdateAtRoute",
+                    policy => policy.Requirements.Add(new AccessRoute(ValidationUtilities.RequestClaimBase.AccessLevel.UpdateResource, "rosterId")));
+            });
+
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddSingleton<IAuthorizationHandler, AccessUrlHandler>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -42,6 +55,11 @@ namespace PicuCalendars
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
 
             //Custom authentication middleware.
             app.Use(async (context, next) =>
@@ -51,7 +69,7 @@ namespace PicuCalendars
                 if (rosterAccess != null)
                 {
                     //use a GenericPrincipal if we want to load roles
-                    context.User = new ClaimsPrincipal(new ClaimsIdentity(new GenericIdentity("DefaultUser","Cookies"), new[] { new Claim("RosterAccess", rosterAccess.Value.ToString()) }));
+                    context.User = new ClaimsPrincipal(new ClaimsIdentity(new GenericIdentity("DefaultUser","Cookies"), new[] { new Claim(rosterAccess.Access.ToString(), rosterAccess.ResourceId.ToString()) }));
                 }
 
                 //Replace the parameter with the username from the request.

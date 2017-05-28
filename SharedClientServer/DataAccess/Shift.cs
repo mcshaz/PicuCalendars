@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PicuCalendars.DataAccess
@@ -14,6 +15,7 @@ namespace PicuCalendars.DataAccess
         public bool LeaveShift { get; set; }
 
         [NotMapped]
+        [JsonIgnore]
         public TimeSpan Duration
         {
             get { return new TimeSpan(0, DurationMins, 0); }

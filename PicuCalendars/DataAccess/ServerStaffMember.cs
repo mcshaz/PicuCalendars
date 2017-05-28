@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PicuCalendars.DataAccess
 {
     public class ServerStaffMember : StaffMember
     {
         public virtual ICollection<ServerAppointment> Appointments { get; set; }
-
         public int? LastViewedVersionId { get; set; }
         public virtual CalendarVersion LastViewedVersion { get; set; }
         public virtual ServerRoster Roster { get; set; }

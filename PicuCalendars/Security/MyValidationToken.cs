@@ -3,10 +3,7 @@ using Newtonsoft.Json;
 using PicuCalendars.DataAccess;
 using PicuCalendars.Utilities;
 using System;
-using System.Collections.Generic;
-using System.Data.Entity;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static PicuCalendars.Security.ValidationUtilities;
@@ -15,7 +12,7 @@ namespace PicuCalendars.Security
 {
     internal static class MyValidationToken
     {
-        public static async Task<Guid?> RosterAccess(HttpContext httpCon, CalendarContext calCon)
+        public static async Task<RequestClaimBase> RosterAccess(HttpContext httpCon, CalendarContext calCon)
         {
             string token = httpCon.Request.Cookies["token"];
             if (token==null)
@@ -37,31 +34,24 @@ namespace PicuCalendars.Security
             byte[] secret;
             switch (claim.Access)
             {
-                case RequestClaim.AccessLevel.CreateRoster:
+                case RequestClaimBase.AccessLevel.CreateResource:
                     secret = Convert.FromBase64String(GetCreateSecret());
                     break;
-                case RequestClaim.AccessLevel.SpecificRoster:
+                case RequestClaimBase.AccessLevel.UpdateResource:
                     secret = (await calCon.Rosters.FindAsync(claim.ResourceId)).Secret;
                     break;
                 default:
                     throw new Exception("Enum not found - " + claim.Access.ToString());
             }
 
-            var result = ValidationUtilities.Validate(timeStamp, claim.ResourceId, secret, claim.Token);
+            var result = Validate(timeStamp, claim.ResourceId, secret, claim.Token);
 
             //return result == ValidationResult.Valid;
 
             if (result == ValidationResult.Valid)
             {
                 //todo change to not authorized exception
-                switch (claim.Access)
-                {
-                    case RequestClaim.AccessLevel.CreateRoster:
-                    case RequestClaim.AccessLevel.SpecificRoster:
-                        return claim.ResourceId;
-                    default:
-                        throw new Exception("Enum not found - " + claim.Access.ToString());
-                }
+                return new RequestClaimBase { Access = claim.Access, ResourceId = claim.ResourceId };
             }
             //will be handled by auth attribute
             //context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;

@@ -73,6 +73,7 @@ namespace PicuCalendars.Services
                         }
                         else
                         {
+                            //_context.Staff.Add(new ServerStaffMember { RosterId = rosterId, RosterCode = si });
                             returnVar.ModelErrors.Add(new ShiftModelError {
                                  ErrorType = ShiftModelError.ShiftErrorType.StaffInitialsNotFound,
                                  ErrorModel = dms

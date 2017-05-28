@@ -44,12 +44,15 @@ namespace PicuCalendars.Security
 
         public enum ValidationResult { Valid, TokenExpired, InvalidToken }
 
-
-        public class RequestClaim
+        public class RequestClaimBase
         {
-            public enum AccessLevel { CreateRoster, SpecificRoster }
+            public enum AccessLevel { CreateResource, UpdateResource }
             public AccessLevel Access { get; set; }
             public Guid ResourceId { get; set; }
+        }
+
+        public class RequestClaim : RequestClaimBase
+        {
             public string Token { get; set; }
         }
     }

@@ -13,7 +13,7 @@ namespace EFExtensions
 {
     public static class EFExtensions
     {
-        public static EntityOp<TEntity> Upsert<TEntity>(this DbContext context, IEnumerable<TEntity> entity) where TEntity : class
+        public static EntityOp<TEntity,int> Upsert<TEntity>(this DbContext context, IEnumerable<TEntity> entity) where TEntity : class
         {
             return new UpsertOp<TEntity>(context, entity);
         }
@@ -21,15 +21,17 @@ namespace EFExtensions
 
     public abstract class EntityOp<TEntity, TRet>
     {
-        public readonly DbContext Context;
-        public readonly IEnumerable<TEntity> EntityList;
-        public readonly string TableName;
-        public readonly string EntityPrimaryKeyName;
+        public readonly DbContext _context;
+        public readonly IEnumerable<TEntity> _entityList;
+        protected readonly string _tableName;
+        protected readonly string[] _entityPrimaryKeyNames;
+        protected readonly string[] _storeGeneratedPrimaryKeyNames;
+        protected readonly Dictionary<string,string> _propNames;
 
-        private readonly List<string> keyNames = new List<string>();
-        public IEnumerable<string> KeyNames { get { return keyNames; } }
+        protected List<string> _matchPropertyNames;
 
-        private readonly List<string> excludeProperties = new List<string>();
+        public IEnumerable<string> MatchPropertyNames => (IEnumerable<string>)_matchPropertyNames ?? _entityPrimaryKeyNames;
+        //private readonly List<string> _excludeProperties = new List<string>();
 
         private static string GetMemberName<T>(Expression<Func<TEntity, T>> selectMemberLambda)
         {
@@ -43,9 +45,36 @@ namespace EFExtensions
 
         public EntityOp(DbContext context, IEnumerable<TEntity> entityList)
         {
-            Context = context;
-            EntityList = entityList;
-            TableName = GetTableName(typeof(TEntity), context, out EntityPrimaryKeyName);
+            _context = context;
+            _entityList = entityList;
+
+            var mapping = GetEntitySetMapping(typeof(TEntity), context);
+            // Get the name of the primary key for the table as we wish to exclude this from the column mapping (we are assuming Identity insert is OFF)
+            //https://romiller.com/2015/08/05/ef6-1-get-mapping-between-properties-and-columns/
+            _propNames = mapping
+                .EntityTypeMappings.Single()
+                .Fragments.Single()
+                .PropertyMappings
+                .OfType<ScalarPropertyMapping>()
+                .ToDictionary(m=>m.Property.Name, m=>'[' + m.Column.Name + ']');
+
+            //_propNames = mapping.EntitySet.ElementType.DeclaredProperties
+            //    .ToDictionary(p => p.ToString(), p=>'[' + p.Name + ']');
+
+            var keyNames = mapping.EntitySet.ElementType.KeyMembers
+                .ToLookup(k => k.IsStoreGeneratedIdentity, k => k.Name);
+
+            _entityPrimaryKeyNames = keyNames.SelectMany(k => k).ToArray();
+            _storeGeneratedPrimaryKeyNames = keyNames[true].ToArray();
+
+            // Find the storage entity set (table) that the entity is mapped
+            var table = mapping
+                .EntityTypeMappings.Single()
+                .Fragments.Single()
+                .StoreEntitySet;
+
+            // Return the table name from the storage entity set
+            _tableName = (string)table.MetadataProperties["Table"].Value ?? table.Name;
         }
 
         public abstract TRet Execute();
@@ -56,26 +85,17 @@ namespace EFExtensions
 
         public EntityOp<TEntity, TRet> Key<TKey>(Expression<Func<TEntity, TKey>> selectKey)
         {
-            keyNames.Add(GetMemberName(selectKey));
+            (_matchPropertyNames ?? (_matchPropertyNames = new List<string>())).Add(GetMemberName(selectKey));
             return this;
         }
 
         public EntityOp<TEntity, TRet> ExcludeField<TField>(Expression<Func<TEntity, TField>> selectField)
         {
-            excludeProperties.Add(GetMemberName(selectField));
+            _propNames.Remove(GetMemberName(selectField));
             return this;
         }
 
-        public IEnumerable<PropertyInfo> ColumnProperties
-        {
-            get
-            {
-                // Dont include virtual navigation properties
-                return typeof(TEntity).GetProperties().Where(pr => !excludeProperties.Contains(pr.Name) && !pr.GetMethod.IsVirtual && pr.Name != EntityPrimaryKeyName);
-            }
-        }
-
-        public static string GetTableName(Type type, DbContext context, out string EntityPrimaryKeyName)
+        private static EntitySetMapping GetEntitySetMapping(Type type, DbContext context)
         {
             var metadata = ((IObjectContextAdapter)context).ObjectContext.MetadataWorkspace;
 
@@ -95,95 +115,99 @@ namespace EFExtensions
                 .Single(s => s.ElementType.Name == entityType.Name);
 
             // Find the mapping between conceptual and storage model for this entity set
-            var mapping = metadata.GetItems<EntityContainerMapping>(DataSpace.CSSpace)
+            return metadata.GetItems<EntityContainerMapping>(DataSpace.CSSpace)
                     .Single()
                     .EntitySetMappings
                     .Single(s => s.EntitySet == entitySet);
 
-            // Get the name of the primary key for the table as we wish to exclude this from the column mapping (we are assuming Identity insert is OFF)
-            EntityPrimaryKeyName = mapping.EntitySet.ElementType.KeyMembers.Select(k => k.Name).FirstOrDefault();
-
-            // Find the storage entity set (table) that the entity is mapped
-            var table = mapping
-                .EntityTypeMappings.Single()
-                .Fragments.Single()
-                .StoreEntitySet;
-
-            // Return the table name from the storage entity set
-            return (string)table.MetadataProperties["Table"].Value ?? table.Name;
         }
     }
 
-    public abstract class EntityOp<TEntity> : EntityOp<TEntity, int>
+    public class UpsertOp<TEntity> : EntityOp<TEntity, int>
     {
-        public EntityOp(DbContext context, IEnumerable<TEntity> entityList) : base(context, entityList) { }
 
-        public sealed override int Execute()
+        public UpsertOp(DbContext context, IEnumerable<TEntity> entityList) : base(context, entityList)
+        { }
+        
+        public override int Execute()
         {
-            ExecuteNoRet();
-            return 0;
-        }
 
-        protected abstract void ExecuteNoRet();
-    }
-
-    public class UpsertOp<TEntity> : EntityOp<TEntity>
-    {
-        public UpsertOp(DbContext context, IEnumerable<TEntity> entityList) : base(context, entityList) { }
-
-        protected override void ExecuteNoRet()
-        {
-            StringBuilder sql = new StringBuilder();
-
-            int notNullFields = 0;
-            var valueKeyList = new List<string>();
-            var columnList = new List<string>();
-
-            var columnProperties = ColumnProperties.ToArray();
-            foreach (var p in columnProperties)
+            StringBuilder sql = new StringBuilder("merge into " + _tableName + " as T using (values ");
+            int nextIndex = 0;
+            var valueList = new List<object>(_propNames.Count * _entityList.Count());
+            var propInfos = _propNames.Keys.Select(k => typeof(TEntity).GetProperty(k)).ToList();
+            foreach (var entity in _entityList)
             {
-                columnList.Add(p.Name);
-                valueKeyList.Add("{" + (notNullFields++) + "}");
+                sql.Append('(' + string.Join(",", Enumerable.Range(nextIndex, _propNames.Count)
+                    .Select(r=> "@p" + r.ToString())) + "),");
+                nextIndex += _propNames.Count;
+                valueList.AddRange(propInfos.Select(pi=>pi.GetValue(entity)));
             }
-            var columns = columnList.ToArray();
-
-            sql.Append("merge into ");
-            sql.Append(TableName);
-            sql.Append(" as T ");
-
-            sql.Append("using (values (");
-            sql.Append(string.Join(",", valueKeyList.ToArray()));
-            sql.Append(")) as S (");
-            sql.Append(string.Join(",", columns));
+            sql.Length -= 1;//remove last comma
+            sql.Append(") as S (");
+            sql.Append(string.Join(",", _propNames.Values));
             sql.Append(") ");
 
             sql.Append("on (");
-            var mergeCond = string.Join(" and ", KeyNames.Select(kn => "T." + kn + "=S." + kn));
-            sql.Append(mergeCond);
+            sql.Append(string.Join(" and ", MatchPropertyNames.Select(kn => "T." + kn + "=S." + kn)));
+            sql.Append(") when matched then update set ");
+            sql.Append(string.Join(",", from p in _propNames
+                                        where !_entityPrimaryKeyNames.Contains(p.Key)
+                                        select "T." + p.Value + "=S." + p.Value));
+
+            var insertables = (from p in _propNames
+                               where !_storeGeneratedPrimaryKeyNames.Contains(p.Key)
+                               select p.Value).ToList();
+            sql.Append(" when not matched then insert (");
+            sql.Append(string.Join(",", insertables));
+            sql.Append(") values (S.");
+            sql.Append(string.Join(",S.", insertables));
+            sql.Append(");");
+            var command = sql.ToString();
+            return _context.Database.ExecuteSqlCommand(command, valueList.ToArray());
+        }
+
+        /*
+         *         protected override void ExecuteNoRet()
+        {
+
+            StringBuilder sql = new StringBuilder("merge into " + _tableName + " as T using (values (");
+            sql.Append(string.Join(",", Enumerable.Range(0,_propNames.Count)
+                .Select(i => '{' + i.ToString() + '}')));
+            sql.Append(")) as S (");
+            sql.Append(string.Join(",", propNames));
             sql.Append(") ");
 
-            sql.Append("when matched then update set ");
-            sql.Append(string.Join(",", columns.Select(c => "T." + c + "=S." + c).ToArray()));
+            sql.Append("on (");
+            sql.Append(string.Join(" and ", OpKeyNames.Select(kn => "T." + kn + "=S." + kn)));
+            sql.Append(") when matched then update set ");
+            sql.Append(string.Join(",", from p in _propNames
+                                        where !_entityPrimaryKeyNames.Contains(p)
+                                        select "T.[" + p + "]=S.[" + p + ']'));
 
+            var insertables = (from p in _propNames
+                               where !_storeGeneratedPrimaryKeyNames.Contains(p)
+                               select '[' + p + ']').ToList();
             sql.Append(" when not matched then insert (");
-            sql.Append(string.Join(",", columns));
+            sql.Append(string.Join(",", insertables));
             sql.Append(") values (S.");
-            sql.Append(string.Join(",S.", columns));
+            sql.Append(string.Join(",S.", insertables));
             sql.Append(");");
             var command = sql.ToString();
 
-            foreach (var entity in EntityList)
+            foreach (var entity in _entityList)
             {
-                var valueList = new List<object>();
+                var valueList = new List<object>(_propNames.Count);
 
-                foreach (var p in columnProperties)
+                foreach (var p in _propNames)
                 {
-                    var val = p.GetValue(entity, null);
+                    var val = typeof(TEntity).GetProperty(p).GetValue(entity, null);
                     valueList.Add(val ?? DBNull.Value);
                 }
 
-                Context.Database.ExecuteSqlCommand(command, valueList.ToArray());
+                _context.Database.ExecuteSqlCommand(command, valueList.ToArray());
             }
         }
+        */
     }
 }

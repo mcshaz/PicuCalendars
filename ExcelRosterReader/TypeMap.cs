@@ -17,19 +17,21 @@ namespace ExcelRosterReader
         public bool Required { get; set; }
         public abstract IEnumerable FromSheets(IEnumerable<Sheet> sheets);
 
+        public abstract IEnumerable FromXLWorkbook(XLWorkbook wb, Guid? rosterId = null);
+
         private IEnumerable<PropertyInfo> GetProperties()
         {
             return DataType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p=>p.CanRead && p.CanWrite && (Type.GetTypeCode(p.PropertyType) >= TypeCode.Boolean || p.PropertyType == typeof(TimeSpan)) 
+                .Where(p=>p.CanRead && p.CanWrite && (Type.GetTypeCode(p.PropertyType) >= TypeCode.Boolean || p.PropertyType == typeof(TimeSpan))
                     && !Attribute.IsDefined(p, typeof(NotMappedAttribute)));
         }
 
         public IXLWorksheet Create(XLWorkbook workbook)
         {
-            var returnVar = workbook.Worksheets.FirstOrDefault(ws=>ws.Name.Equals(DataType.Name, StringComparison.OrdinalIgnoreCase)); //.Worksheet(DataType.Name);
+            var returnVar = workbook.Worksheets.FirstOrDefault(ws=>ws.Name.Equals(SheetName, StringComparison.OrdinalIgnoreCase)); //.Worksheet(DataType.Name);
             if (returnVar == null)
             {
-                returnVar = workbook.AddWorksheet(DataType.Name);
+                returnVar = workbook.AddWorksheet(SheetName);
                 var firstRow = returnVar.Row(1);
                 int i = 1;
                 foreach (var p in GetProperties())
@@ -69,7 +71,17 @@ namespace ExcelRosterReader
             //?todo add pleuraliser
             SheetName = sheetName;
         }
-        
+
+        public override IEnumerable FromXLWorkbook(XLWorkbook wb, Guid? rosterId = null)
+        {
+            var sheet = wb.Worksheet(SheetName);
+            if (sheet == null)
+            {
+                return null;
+            }
+            return FromSheet.TypeFromSheet<T>(sheet, rosterId);
+        }
+
         public override IEnumerable FromSheets(IEnumerable<Sheet> sheets)
         {
             var sheet = sheets.FirstOrDefault(s => string.Equals(s.Name?.Value?.Trim(), SheetName, StringComparison.InvariantCultureIgnoreCase));

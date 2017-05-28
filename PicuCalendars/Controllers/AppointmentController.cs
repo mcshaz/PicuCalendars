@@ -29,11 +29,16 @@ namespace PicuCalendars.Controllers
         }
 
         [HttpPost("{rosterId}")]
-        public ShiftModelErrorCollection Post(Guid rosterId,[FromBody]List<Appointment> days)
+        [Authorize(Policy = "UpdateAtRoute")]
+        public IActionResult Post(Guid rosterId,[FromBody]List<Appointment> days)
         {
+            if (days == null)
+            {
+                return BadRequest();
+            }
             //could eventually save size by using - http://www.tugberkugurlu.com/archive/creating-custom-csvmediatypeformatter-in-asp-net-web-api-for-comma-separated-values-csv-format
             var ds = new DayServices(_context);
-            return ds.UpsertAppointments(days, rosterId);
+            return new ObjectResult(ds.UpsertAppointments(days, rosterId));
         }
     }
 }

@@ -5,12 +5,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using PicuCalendars.DataAccess;
+using EFExtensions;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace PicuCalendars.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = "UpdateAtRoute")]
     [Route("api/[controller]")]
     public class ShiftController : Controller
     {
@@ -21,7 +22,7 @@ namespace PicuCalendars.Controllers
             _context = context;
         }
         // GET: api/values
-        [HttpGet("{RosterId}")]
+        [HttpGet("{rosterId}")]
         public IEnumerable<Shift> Get(Guid rosterId)
         {
             return _context.Shifts.Where(s=>s.RosterId == rosterId);
@@ -38,17 +39,30 @@ namespace PicuCalendars.Controllers
             return new ObjectResult(item);
         }
 
+
         // POST api/values
-        [HttpPost("rosterId")]
-        public IActionResult Post(Guid rosterId, [FromBody]Shift item)
+        [HttpPost("{rosterId}/{code}")]
+        public IActionResult Post(Guid rosterId, string code, [FromBody]Shift item)
         {
-            if (item == null || item.RosterId != rosterId)
+            if (item == null || item.RosterId != rosterId || item.Code != code)
             {
                 return BadRequest();
             }
             _context.Shifts.Add(item);
             _context.SaveChanges();
             return CreatedAtRoute(new { item.RosterId, item.Code}, item);
+        }
+
+        [HttpPost("{rosterId}")]
+        public IActionResult Post(Guid rosterId, [FromBody]IReadOnlyList<Shift> items)
+        {
+            if (items == null || items.Any(i => i.RosterId != rosterId))
+            {
+                return BadRequest();
+            }
+            _context.Upsert(items)
+                .Execute();
+            return CreatedAtRoute(new { rosterId }, items);
         }
 
         // PUT api/values/5

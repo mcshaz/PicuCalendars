@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Packaging;
+﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using ExcelParser;
 using ExcelRosterReader.CommandLineParsing;
@@ -7,6 +8,7 @@ using PicuCalendars.DataAccess;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -37,6 +39,11 @@ namespace ExcelRosterReader
 
         protected int RunCommand()
         {
+            if (string.IsNullOrEmpty(_arg.Value))
+            {
+                Error.WriteLine("no roster specified. Syntax: " + Syntax);
+                return 1;
+            }
             var rosterInfo = Storage.Find(_arg.Value);
             if (rosterInfo == null)
             {
@@ -59,15 +66,34 @@ namespace ExcelRosterReader
                 return 1;
             }
 
-            using (var document = SpreadsheetDocument.Open(rosterInfo.MapPath, false))
+            try
             {
-                var sheets = document.WorkbookPart.Workbook.Descendants<Sheet>();
-                foreach (var s in selectedTypes)
+                /*
+                using (var document = SpreadsheetDocument.Open(rosterInfo.MapPath, false))
                 {
-                    var data = s.FromSheets(sheets);
-                    SendEntities.PostRosterUpsert(rosterInfo.RosterId, rosterInfo.Base64Secret, data, Out, Error);
+                    var sheets = document.WorkbookPart.Workbook.Descendants<Sheet>();
+                    foreach (var s in selectedTypes)
+                    {
+                        var data = s.FromSheets(sheets);
+                        SendEntities.PostRosterUpsert(rosterInfo.RosterId, rosterInfo.Base64Secret, data, Out, Error);
+                    }
+                } 
+                */
+                using (var wb = new XLWorkbook(rosterInfo.MapPath, XLEventTracking.Disabled))
+                {
+                    foreach (var s in selectedTypes)
+                    {
+                        var data = s.FromXLWorkbook(wb, rosterInfo.RosterId);
+                        SendEntities.PostRosterUpsert(rosterInfo.RosterId, rosterInfo.Base64Secret, data, Out, Error);
+                    }
                 }
             }
+            catch (IOException e)
+            {
+                Error.WriteLine(e.Message);
+                return 1;
+            }
+
 
             return 0;
         }

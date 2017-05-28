@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Packaging;
+﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using ExcelParser;
 using Microsoft.Extensions.CommandLineUtils;
@@ -61,22 +62,21 @@ namespace ExcelRosterReader
             {
                 if (r.RosterType == ExcelRosterFileInfo.RosterTypes.ImplicitNames)
                 {
-                    using (var document = SpreadsheetDocument.Open(r.MapPath, false))
+                    var sheetName = new TypeMap<ColumnMap>().SheetName;
+                    using (var mapSS = new XLWorkbook(r.MapPath, XLEventTracking.Disabled))
                     {
-                        var sheet = document.WorkbookPart.Workbook
-                            .Elements<Sheet>()
-                            .First(s=>nameof(ColumnMap).Equals(s.Name, StringComparison.InvariantCultureIgnoreCase));
+                        var sheet = mapSS.Worksheets.FirstOrDefault(s=> s.Name.Equals(sheetName,StringComparison.InvariantCultureIgnoreCase));
                         var map = FromSheet.DictionaryFromSheet(sheet, "Column", "ShiftCode");
                         IEnumerable<Appointment> roster;
                         if (r.MapPath == r.RosterPath)
                         {
-                            roster = GetRows.FromInitialDict(document.WorkbookPart.Workbook, map, r.DateColumn);
+                            roster = GetRows.FromInitialDict(mapSS, map, r.DateColumn);
                         }
                         else
                         {
-                            using (var rosterXl = SpreadsheetDocument.Open(r.MapPath, false))
+                            using (var rosterSS = new XLWorkbook(r.RosterPath, XLEventTracking.Disabled))
                             {
-                                roster = GetRows.FromInitialDict(rosterXl.WorkbookPart.Workbook, map, r.DateColumn);
+                                roster = GetRows.FromInitialDict(rosterSS, map, r.DateColumn);
                             }
                         }
                         SendEntities.PostRosterUpsert(r.RosterId, r.Base64Secret, roster, Out, Error);

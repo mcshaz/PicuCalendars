@@ -10,7 +10,7 @@ using PicuCalendars.DataAccess;
 
 namespace PicuCalendars.Controllers
 {
-    //[Authorize] //note with current implementation, can never authorize
+    [Authorize] //note with current implementation, can never authorize
     [Route("api/[controller]")]
     public class RosterController : Controller
     {
@@ -21,54 +21,58 @@ namespace PicuCalendars.Controllers
             _context = context;
         }
 
-        [HttpGet("{id}")]
-        public Roster Get(Guid id)
+        [HttpGet("{rosterId}")]
+        public Roster Get(Guid rosterId)
         {
-            return _context.Rosters.Find(id);
+            return _context.Rosters.Find(rosterId);
         }
 
         [HttpGet]
-        public IEnumerable<Roster> Get()
+        public IActionResult /*IEnumerable<Roster>*/ Get()
         {
-            return _context.Rosters;
+            return new ObjectResult(_context.Rosters);
         }
 
         // POST api/values
-        [HttpPost("{id}")]
-        public IActionResult Post(Guid id, [FromBody]Roster item)
+        [Authorize(Policy = "CreateAtRoute")]
+        [HttpPost("{rosterId}")]
+        public IActionResult Post(Guid rosterId, [FromBody]Roster item)
         {
-            if (item == null || item.Id != id)
+            if (item == null || item.Id != rosterId)
             {
                 return BadRequest();
             }
-            _context.Rosters.Add(ServerRoster.FromRoster(item));
+            var serverRoster = ServerRoster.FromRoster(item);
+            _context.Rosters.Add(serverRoster);
             _context.SaveChanges();
-            return CreatedAtRoute(new { item.Id}, item);
+            return CreatedAtRoute(new { id = item.Id }, serverRoster);
         }
 
         // PUT api/values/5
-        [HttpPut("{id}")]
-        public IActionResult Put(Guid id,[FromBody]Roster item)
+        [Authorize(Policy = "UpdateAtRoute")]
+        [HttpPut("{rosterId}")]
+        public IActionResult Put(Guid rosterId, [FromBody]Roster item)
         {
-            if (item == null ||item.Id != id)
+            if (item == null ||item.Id != rosterId)
             {
                 return BadRequest();
             }
-            var existing = _context.Rosters.Find(id);
+            var existing = _context.Rosters.Find(rosterId);
             if (existing == null)
             {
                 return NotFound();
             }
-            _context.Entry(existing).CurrentValues.SetValues(item);
+            var serverRoster = ServerRoster.FromRoster(item);
+            _context.Entry(existing).CurrentValues.SetValues(serverRoster);
             _context.SaveChanges();
             return new NoContentResult();
         }
 
         // DELETE api/values/5
-        [HttpDelete("{id}")]
-        public IActionResult Delete(Guid id)
+        [HttpDelete("{rosterId}")]
+        public IActionResult Delete(Guid rosterId)
         {
-            var item = _context.Rosters.Find(id);
+            var item = _context.Rosters.Find(rosterId);
             if (item == null)
             {
                 return NotFound();

@@ -1,4 +1,4 @@
-﻿using DocumentFormat.OpenXml.Packaging;
+﻿using ClosedXML.Excel;
 using DocumentFormat.OpenXml.Spreadsheet;
 using System;
 using System.Collections.Generic;
@@ -10,6 +10,43 @@ namespace ExcelParser
 {
     public static class FromSheet
     {
+        public static Dictionary<string, string> DictionaryFromSheet(IXLWorksheet ws, string keyHeader, string valueHeader)
+        {
+            var usedRows = ws.RangeUsed().RowsUsed();
+
+            // Narrow down the row so that it only includes the used part
+            int keyCol = 0;
+            int valueCol = 0;
+            foreach (var c in usedRows.First().CellsUsed())
+            {
+                if (c.GetString() == keyHeader)
+                {
+                    keyCol = c.Address.ColumnNumber;
+                    if (valueCol != 0) { break; }
+                }
+                else if (c.GetString() == valueHeader)
+                {
+                    valueCol = c.Address.ColumnNumber;
+                    if (keyCol != 0) { break; }
+                }
+            }
+            // Move to the next row (it now has the titles)
+
+            var returnVar = new Dictionary<string,string>();
+
+            foreach (var r in usedRows.Skip(1))
+            {
+                string key = r.Cell(keyCol)?.GetString();
+                string value = r.Cell(valueCol)?.GetString();
+                if (!(string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value)))
+                {
+                    returnVar.Add(key, value);
+                }
+            }
+
+            return returnVar;
+        }
+
         public static Dictionary<string, string> DictionaryFromSheet(Sheet sheet, string keyHeader, string valueHeader)
         {
             var rows = sheet.GetFirstChild<SheetData>().Elements<Row>();
@@ -55,6 +92,69 @@ namespace ExcelParser
                     returnVar.Add(k, v);
                 }
             }
+            return returnVar;
+        }
+
+        public static List<T> TypeFromSheet<T>(IXLWorksheet ws, Guid? rosterId = null) where T : class, new()
+        {
+            var usedRows = ws.RangeUsed().RowsUsed();
+
+            // Narrow down the row so that it only includes the used part
+            var colToPropInfo = (from c in usedRows.First().CellsUsed()
+                                 let pi = typeof(T).GetProperty(c.GetString())
+                                 where pi != null
+                                 select new { c.Address.ColumnNumber, pi }).ToDictionary(a=>a.ColumnNumber, a=>a.pi);
+
+            // Move to the next row (it now has the titles)
+
+            var returnVar = new List<T>();
+
+            foreach (var r in usedRows.Skip(1))
+            {
+                T rowInst = null;
+                foreach (var c in r.CellsUsed())
+                {
+                    if (colToPropInfo.TryGetValue(c.Address.ColumnNumber, out PropertyInfo info))
+                    {
+                        object val;
+                        if (info.PropertyType == typeof(TimeSpan))
+                        { 
+                            if (c.DataType == XLCellValues.DateTime)
+                            {
+                                val = c.GetDateTime() - DateTime.FromOADate(0.0);
+                            }
+                            else
+                            {
+                                val = c.GetTimeSpan();
+                            }
+                            
+                        }
+                        else if (info.PropertyType == typeof(DateTime))
+                        {
+                            val = c.GetDateTime();
+                        }
+                        else if (info.PropertyType == typeof(string))
+                        {
+                            val = c.GetString();
+                        }
+                        else
+                        {
+                            var converter = TypeDescriptor.GetConverter(info.PropertyType);
+                            val = converter.ConvertFromString(c.GetString());
+                        }
+                        info.SetValue(rowInst ?? (rowInst = new T()), val);
+                    }
+                }
+                if (rowInst != null)
+                {
+                    if (rosterId.HasValue)
+                    {
+                        typeof(T).GetProperty("RosterId").SetValue(rowInst, rosterId.Value);
+                    }
+                    returnVar.Add(rowInst);
+                }
+            }
+
             return returnVar;
         }
 

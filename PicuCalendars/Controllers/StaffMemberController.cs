@@ -5,12 +5,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using PicuCalendars.DataAccess;
+using EFExtensions;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace PicuCalendars.Controllers
 {
-    [Authorize]
+    [Authorize(Policy = "UpdateAtRoute")]
     [Route("api/[controller]")]
     public class StaffMemberController : Controller
     {
@@ -22,6 +23,7 @@ namespace PicuCalendars.Controllers
         }
         // GET: api/values
         [HttpGet("{rosterId}")]
+        [AllowAnonymous]
         public IEnumerable<StaffMember> Get(Guid rosterId)
         {
             return _context.Staff.Where(s => s.RosterId == rosterId);
@@ -39,28 +41,32 @@ namespace PicuCalendars.Controllers
         }
 
         // POST api/values
-        [HttpPost("rosterId")]
-        public IActionResult Post(Guid rosterId, [FromBody]StaffMember item)
+        [HttpPost("{rosterId}/{rosterCode}")]
+        public IActionResult Post(Guid rosterId, string rosterCode,[FromBody]StaffMember item)
         {
-            if (item == null || item.RosterId != rosterId)
+            if (item == null || item.RosterId != rosterId || item.RosterCode != rosterCode)
             {
                 return BadRequest();
             }
-            _context.Staff.Add(ServerStaffMember.FromStaffMember(item));
+            var serverStaffMember = ServerStaffMember.FromStaffMember(item);
+            _context.Staff.Add(serverStaffMember);
             _context.SaveChanges();
-            return CreatedAtRoute(new { item.RosterId, item.RosterCode }, item);
+            return CreatedAtRoute(new { item.RosterId, item.RosterCode }, serverStaffMember);
         }
 
-        [HttpPost("rosterId")]
-        public IActionResult Post(Guid rosterId, [FromBody]List<StaffMember> items)
+        [HttpPost("{rosterId}")]
+        public IActionResult Post(Guid rosterId,[FromBody]IReadOnlyList<StaffMember> items)
         {
             if (items == null || items.Any(i=> i.RosterId != rosterId))
             {
                 return BadRequest();
             }
-            _context.Staff.AddRange(items.Select(ServerStaffMember.FromStaffMember));
-            _context.SaveChanges();
-            return CreatedAtRoute(new { rosterId }, items);
+            var serverStaffMembers = items.Select(ServerStaffMember.FromStaffMember).ToList();
+            _context
+                .Upsert(serverStaffMembers)
+                .Execute();
+            //_context.SaveChanges();
+            return CreatedAtRoute(new { rosterId }, serverStaffMembers);
         }
 
         // PUT api/values/5
@@ -76,7 +82,8 @@ namespace PicuCalendars.Controllers
             {
                 return NotFound();
             }
-            _context.Entry(existing).CurrentValues.SetValues(item);
+            var serverStaffMember = ServerStaffMember.FromStaffMember(item);
+            _context.Entry(existing).CurrentValues.SetValues(serverStaffMember);
             _context.SaveChanges();
             return new NoContentResult();
         }

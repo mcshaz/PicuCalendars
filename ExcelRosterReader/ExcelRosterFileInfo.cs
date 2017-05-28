@@ -13,7 +13,7 @@ namespace ExcelRosterReader
 
         public string RosterPath { get; set; }
         public string MapPath { get; set; }
-        [BsonIndex]
+        [BsonIndex(unique:true)]
         public string Description { get; set; }
         [BsonId]
         public Guid RosterId { get; set; }

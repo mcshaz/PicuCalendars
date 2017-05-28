@@ -72,6 +72,7 @@
     <Compile Include="SendEntities.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="TypeMap.cs" />
+    <Compile Include="ValidateAttributes.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
