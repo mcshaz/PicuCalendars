@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 using PicuCalendars.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ExcelParser
@@ -25,7 +26,45 @@ namespace ExcelParser
             List<Appointment> shiftModels = new List<Appointment>();
 
             char[] splitters = new[] { ',', '/' };
+            char[] trimChars = new[] { '\t', ' ', '(', ')', '?', '*' }; //todo get whitespace chars (look at string source code)
 
+            foreach (var sheet in sheets)
+            {
+                var rows = sheet.RowsUsed();
+                foreach (var row in rows)
+                {
+                    if (row.Cell(dateCol).TryGetValue(out DateTime rowDate))
+                    {
+                        var rowShifts = new List<Tuple<string, IEnumerable<string>>>();
+                        foreach (var c in row.CellsUsed())
+                        {
+                            if (columnShiftLink.TryGetValue(c.Address.ColumnLetter,out string shiftCode)
+                                && c.TryGetValue(out string staffCode))
+                            {
+                                rowShifts.Add(new Tuple<string, IEnumerable<string>>(shiftCode, staffCode.Split(splitters, StringSplitOptions.RemoveEmptyEntries).Select(s=>s.Trim(trimChars))));
+                            }
+                        }
+                        shiftModels.AddRange(rowShifts.GroupBy(rs => rs.Item1)
+                            .Select(g => new Appointment { Date = rowDate, ShiftCode = g.Key, StaffInitials = g.SelectMany(rs => rs.Item2).ToArray() }));
+                    }
+                }
+            }
+            return shiftModels;
+        }
+
+        public static IEnumerable<Appointment> FromColumnStaffHeaders(XLWorkbook workbook, string dateCol = "A")
+        {
+            int year = DateTime.Today.Year;
+            string[] years = new[] { year.ToString(), (year + 1).ToString() };
+
+            var sheets = workbook.Worksheets
+                .Where(s => years.Contains(s.Name));
+
+            List<Appointment> shiftModels = new List<Appointment>();
+
+            char[] trimChars = new[] { '\t', ' ', '(', ')', '?' }; //todo get whitespace chars (look at string source code)
+            var returnVar = new List<Appointment>();
+            Dictionary<int, string> currentDictionary = null;
             foreach (var s in sheets)
             {
                 var rows = s.RowsUsed();
@@ -34,15 +73,36 @@ namespace ExcelParser
                     if (row.Cell(dateCol).TryGetValue(out DateTime rowDate))
                     {
                         var rowShifts = new List<Tuple<string, string>>();
-                        foreach (var kv in columnShiftLink)
+                        foreach (var c in row.CellsUsed())
                         {
-                            if (row.Cell(kv.Key).TryGetValue(out string staffCode) && !string.IsNullOrEmpty(staffCode))
+                            if (c.TryGetValue(out string shiftCode) && currentDictionary.TryGetValue(c.Address.ColumnNumber, out string staffName))
                             {
-                                rowShifts.AddRange(staffCode.Split(splitters).Select(sc => new Tuple<string, string>(kv.Value, sc)));
+                                rowShifts.Add(new Tuple<string, string>(shiftCode, staffName));
                             }
                         }
-                        shiftModels.AddRange(rowShifts.GroupBy(rs => rs.Item1)
-                            .Select(g => new Appointment { Date = rowDate, ShiftCode = g.Key, StaffInitials = g.Select(rs => rs.Item2).ToArray() }));
+                        returnVar.AddRange(rowShifts.ToLookup(rs=>rs.Item1,rs=>rs.Item2).Select(rs=>new Appointment {
+                            Date = rowDate,
+                            ShiftCode = rs.Key,
+                            StaffInitials = rs.ToArray()
+                        }));
+                    }
+                    else
+                    {
+                        var newDict = new Dictionary<int, string>();
+                        foreach (var c in row.CellsUsed())
+                        {
+                            if (c.TryGetValue(out string cv))
+                            {
+                                if (!string.IsNullOrWhiteSpace(cv))
+                                {
+                                    newDict.Add(c.Address.ColumnNumber, cv);
+                                }
+                            }
+                        }
+                        if (newDict.Count > 0)
+                        {
+                            currentDictionary = newDict;
+                        }
                     }
                 }
             }
