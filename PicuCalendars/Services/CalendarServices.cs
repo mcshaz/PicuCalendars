@@ -31,7 +31,7 @@ namespace PicuCalendars.Services
             };
 
             var staffMember = _context.Staff.Include("Department")
-                .Single(s => s.RosterId == rosterId && s.RosterCode == initials);
+                .Single(s => s.RosterId == rosterId && s.StaffMemberCode == initials);
             staffMember.LastViewedVersionId = _context.Versions.Max(v=>v.Number);
             foreach (var e in GetCalls(staffMember, daysPriorToCommence))
             {
@@ -50,7 +50,7 @@ namespace PicuCalendars.Services
             var userAppointments = (from a in _context.Appointments
                                         .Include("VersionCreated").Include("VersionCancelled")
                                         .AsNoTracking() 
-                                    where a.RosterId==staffMember.RosterId && a.StaffInitials == staffMember.RosterCode && a.Start > datePrior
+                                    where a.RosterId==staffMember.RosterId && a.StaffMemberCode == staffMember.StaffMemberCode && a.Start > datePrior
                                     orderby a.Start
                                     select a).ToLookup(a => new { Cancelled = a.VersionCancelledId != null, a.IsLeaveShift, a.Description });
 
@@ -88,7 +88,7 @@ namespace PicuCalendars.Services
                                 .Include("VersionCreated")
                                 .Include("StaffMember")
                                 .AsNoTracking()
-                                .Where(a => a.RosterId == staffMember.RosterId && a.VersionCancelledId == null && !a.IsLeaveShift && a.StaffInitials != staffMember.RosterCode)
+                                .Where(a => a.RosterId == staffMember.RosterId && a.VersionCancelledId == null && !a.IsLeaveShift && a.StaffMemberCode != staffMember.StaffMemberCode)
                                 .Where(datePred)
                                 .OrderBy(a=>a.Start)
                                 .ToList());
@@ -203,7 +203,7 @@ namespace PicuCalendars.Services
             if (!colleagues.Any()) { return; }
             List<ColleagueModel> sameCallPrincipal = new List<ColleagueModel>();
             List<ColleagueOtherShiftModel> otherCalls = new List<ColleagueOtherShiftModel>();
-            foreach (var g in colleagues.ToLookup(c => new { c.StaffMember, Summary = GetSummary(c) }))
+            foreach (var g in colleagues.ToLookup(c => new { c.Staff, Summary = GetSummary(c) }))
             {
                 var consGrp = g.ConsecutiveGroup((prior, cur) => cur.Start <= prior.Finish);
                 if (g.Key.Summary == evt.Summary)
@@ -226,7 +226,7 @@ namespace PicuCalendars.Services
             var desc = new StringBuilder(evt.Description);
             if (sameCallPrincipal.Any())
             {
-                var summ = new StringBuilder(evt.Summary + " (with ");
+                var summ = sameCallPrincipal.Count > 3 ? null : new StringBuilder(evt.Summary + " (with ");
                 bool appendTab = false;
                 const string sep = ", ";
                 foreach (var s in sameCallPrincipal)
@@ -240,31 +240,34 @@ namespace PicuCalendars.Services
                         desc.Append(" with ");
                         appendTab = true;
                     }
-                    desc.Append(s.Person.FullName ?? s.Person.RosterCode);
-                    summ.Append(s.Person.RosterCode);
+                    desc.Append(s.Person.FullName ?? s.Person.StaffMemberCode);
+                    summ?.Append(s.Person.StaffMemberCode);
                     if (s.Start > evt.DtStart.AsSystemLocal)
                     {
                         string st = $" from {s.Start:g}";
                         desc.Append(st);
-                        summ.Append(st);
+                        summ?.Append(st);
                     }
                     if (s.Finish < evt.DtEnd.AsSystemLocal)
                     {
                         string fn = s.FinishString();
                         desc.Append(" until " + fn);
-                        summ.Append(" to " + fn);
+                        summ?.Append(" to " + fn);
                     }
-                    summ.Append(sep);
+                    summ?.Append(sep);
                     desc.AppendLine();
                 }
-                summ.Length -= sep.Length;
-                summ.Append(')');
-                evt.Summary = summ.ToString();
+                if (summ != null)
+                {
+                    summ.Length -= sep.Length;
+                    summ.Append(')');
+                    evt.Summary = summ.ToString();
+                }
             }
 
             foreach (var o in otherCalls)
             {
-                desc.Append(o.Description + ' ' + (o.Person.FullName ?? o.Person.RosterCode));
+                desc.Append(o.Description + ' ' + (o.Person.FullName ?? o.Person.StaffMemberCode));
                 if (o.Start > evt.DtStart.AsSystemLocal)
                 {
                     desc.Append($" from {o.Start:g}");
@@ -299,7 +302,7 @@ namespace PicuCalendars.Services
 
             protected static void InstantiateColleagueModel(IList<ServerAppointment> appts, ColleagueModel model)
             {
-                model.Person = appts[0].StaffMember;
+                model.Person = appts[0].Staff;
                 model.Start = appts[0].Start;
                 model.Finish = appts[appts.Count - 1].Finish;
                 model.Sequence = appts.Max(e => e.VersionCreatedId);

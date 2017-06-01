@@ -23,7 +23,7 @@ namespace PicuCalendars.Services
             _context = context;
         }
 
-        public ShiftModelErrorCollection UpsertAppointments(IEnumerable<Appointment> dayModels, Guid rosterId)
+        public ShiftModelErrorCollection UpsertAppointments(IEnumerable<Appointment> dayModels, Guid rosterId, bool createStaff = false)
         {
             var returnVar = new ShiftModelErrorCollection
             {
@@ -43,7 +43,7 @@ namespace PicuCalendars.Services
                 return _version;
             });
 
-            var staff = _context.Staff.Where(s => s.RosterId == rosterId).ToDictionary(s=>s.RosterCode);
+            var staff = _context.Staff.Where(s => s.RosterId == rosterId).ToDictionary(s=>s.StaffMemberCode);
             var shifts = _context.Shifts.Where(s => s.RosterId == rosterId).ToDictionary(s=>s.Code);
 
             //to do concurrency/lock rows
@@ -52,7 +52,7 @@ namespace PicuCalendars.Services
             var lastViewedVersionId = staff.Values.Max(s => s.LastViewedVersionId) ?? int.MinValue;
 
             var newAppointments = dayModels.SelectMany(dms => {
-                if(shifts.TryGetValue(dms.ShiftCode, out Shift shift))
+                if(shifts.TryGetValue(dms.ShiftCode, out ServerShift shift))
                 {
                     var startDate = dms.Date + shift.ShiftStart;
                     var finishDate = startDate + shift.Duration;
@@ -65,11 +65,17 @@ namespace PicuCalendars.Services
                             {
                                 Start = startDate,
                                 Finish = finishDate,
-                                StaffMember = sm,
+                                Staff = sm,
                                 RosterId = rosterId,
                                 Description = shift.Description,
                                 IsLeaveShift = shift.LeaveShift
                             });
+                        }
+                        else if (createStaff)
+                        {
+                            var newStaff = new ServerStaffMember { StaffMemberCode = si, RosterId = rosterId };
+                            _context.Staff.Add(newStaff);
+                            staff.Add(si, newStaff);
                         }
                         else
                         {
@@ -91,7 +97,7 @@ namespace PicuCalendars.Services
                     });
                     return Enumerable.Empty<ServerAppointment>();
                 }
-            }).ToDictionary(a=> new { a.Start, a.StaffMember.RosterCode, a.Description });
+            }).ToDictionary(a=> new { a.Start, a.Staff.StaffMemberCode, a.Description });
 
             var existingAppointments = _context.Appointments
                 .Where(ContainsDates(newAppointments.Values.Select(a=>a.Start)))
@@ -106,7 +112,7 @@ namespace PicuCalendars.Services
             foreach (var existAppt in existingAppointments)
             {
                 
-                if (!newAppointments.Remove(new { existAppt.Start, existAppt.StaffMember.RosterCode, existAppt.Description }))
+                if (!newAppointments.Remove(new { existAppt.Start, existAppt.Staff.StaffMemberCode, existAppt.Description }))
                 {
                     if (lastViewedVersionId >= existAppt.VersionCreatedId)
                     {

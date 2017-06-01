@@ -44,14 +44,14 @@ namespace PicuCalendars.Controllers
         [HttpPost("{rosterId}/{rosterCode}")]
         public IActionResult Post(Guid rosterId, string rosterCode,[FromBody]StaffMember item)
         {
-            if (item == null || item.RosterId != rosterId || item.RosterCode != rosterCode)
+            if (item == null || item.RosterId != rosterId || item.StaffMemberCode != rosterCode)
             {
                 return BadRequest();
             }
             var serverStaffMember = ServerStaffMember.FromStaffMember(item);
             _context.Staff.Add(serverStaffMember);
             _context.SaveChanges();
-            return CreatedAtRoute(new { item.RosterId, item.RosterCode }, serverStaffMember);
+            return CreatedAtRoute(new { item.RosterId, item.StaffMemberCode }, serverStaffMember);
         }
 
         [HttpPost("{rosterId}")]
@@ -73,7 +73,7 @@ namespace PicuCalendars.Controllers
         [HttpPut("{rosterId}/{abbreviation}")]
         public IActionResult Put(Guid rosterId, string abbreviation, [FromBody]StaffMember item)
         {
-            if (item == null || item.RosterCode != abbreviation || item.RosterId != rosterId)
+            if (item == null || item.StaffMemberCode != abbreviation || item.RosterId != rosterId)
             {
                 return BadRequest();
             }

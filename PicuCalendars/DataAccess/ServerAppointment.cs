@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace PicuCalendars.DataAccess
 {
@@ -8,14 +9,16 @@ namespace PicuCalendars.DataAccess
 
         public DateTime Start { get; set; }
         public DateTime Finish { get; set; }
+
+        [StringLength(Shift.DescriptionLength)]
         public string Description { get; set; }
         public bool IsLeaveShift { get; set; }
 
         public Guid RosterId { get; set; }
         public virtual ServerRoster Roster { get; set; }
-
-        public string StaffInitials { get; set; }
-        public virtual ServerStaffMember StaffMember { get; set; }
+        [StringLength(StaffMember.StaffMemberCodeLength, MinimumLength =StaffMember.StaffMemberCodeMinLength)]
+        public string StaffMemberCode { get; set; }
+        public virtual ServerStaffMember Staff { get; set; }
 
         public int VersionCreatedId { get; set; }
         public virtual CalendarVersion VersionCreated { get; set; }

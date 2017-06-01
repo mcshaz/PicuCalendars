@@ -75,6 +75,8 @@ namespace EFExtensions
 
             // Return the table name from the storage entity set
             _tableName = (string)table.MetadataProperties["Table"].Value ?? table.Name;
+            var schemaName = (string)table.MetadataProperties["Schema"].Value ?? table.Schema;
+            _tableName = $"[{schemaName}].[{_tableName}]";
         }
 
         public abstract TRet Execute();

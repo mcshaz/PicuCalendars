@@ -48,7 +48,7 @@ namespace PicuCalendars.Controllers
             {
                 return BadRequest();
             }
-            _context.Shifts.Add(item);
+            _context.Shifts.Add(ServerShift.FromShift(item));
             _context.SaveChanges();
             return CreatedAtRoute(new { item.RosterId, item.Code}, item);
         }
@@ -60,7 +60,7 @@ namespace PicuCalendars.Controllers
             {
                 return BadRequest();
             }
-            _context.Upsert(items)
+            _context.Upsert(items.Select(ServerShift.FromShift))
                 .Execute();
             return CreatedAtRoute(new { rosterId }, items);
         }
@@ -78,7 +78,7 @@ namespace PicuCalendars.Controllers
             {
                 return NotFound();
             }
-            _context.Entry(existing).CurrentValues.SetValues(item);
+            _context.Entry(existing).CurrentValues.SetValues(ServerShift.FromShift(item));
             _context.SaveChanges();
             return new NoContentResult();
         }

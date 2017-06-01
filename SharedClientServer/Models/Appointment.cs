@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using PicuCalendars.DataAccess;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -16,10 +17,10 @@ namespace PicuCalendars.Models
         [DataType(DataType.Date)]
         public DateTime Date { get; set; }
 
-        [StringLength(2, MinimumLength = 2)]
+        [StringLength(Shift.CodeLength)]
         public string ShiftCode { get; set; }
 
-        [EachStringLength(64,MinimumLength = 1)]
+        [EachStringLength(StaffMember.StaffMemberCodeLength,MinimumLength = StaffMember.StaffMemberCodeMinLength)]
         public string[] StaffInitials { get; set; }
     }
 

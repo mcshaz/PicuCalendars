@@ -147,6 +147,7 @@ namespace ExcelRosterReader.CommandLineParsing
                 return 1;
             }
             Storage.Add(newInfo);
+            Out.WriteLine("Successfully added with id " + newInfo.RosterId.ToString());
             return 0;
         }
 
