@@ -143,7 +143,28 @@ namespace EFExtensions
                 sql.Append('(' + string.Join(",", Enumerable.Range(nextIndex, _propNames.Count)
                     .Select(r=> "@p" + r.ToString())) + "),");
                 nextIndex += _propNames.Count;
-                valueList.AddRange(propInfos.Select(pi=>pi.GetValue(entity)));
+                var toAdd = new List<object>();
+                foreach(var info in propInfos)
+                {
+                    var value = info.GetValue(entity);
+                    if (value == null)
+                    {
+                        //Handle types that dbnull doesn't work for
+                        var type = info.PropertyType;
+                        if (type == typeof(byte[]))
+                        {
+                            toAdd.Add(SqlBinary.Null);
+                        } else
+                        {
+                            toAdd.Add(DBNull.Value);
+                        }
+                    }
+                    else
+                    {
+                        toAdd.Add(value);
+                    }
+                }
+                valueList.AddRange(toAdd);
             }
             sql.Length -= 1;//remove last comma
             sql.Append(") as S (");
